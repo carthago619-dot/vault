@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"> 
+<meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+<title>THE VAULT // ONE MIND WINS</title> 
+
+<link rel="preconnect" href="https://fonts.googleapis.com"> 
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin> 
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;900&family=JetBrains+Mono:wght@100;400;700&display=swap" rel="stylesheet"> 
+
+<style>
+:root { 
+    --obsidian-base:#050505; 
+    --obsidian-surface:#0a0a0a; 
+    --obsidian-edge:#1a1a1a; 
+    --accent:#ffffff; 
+    --hostile-dim:#333333; 
+}
+*{margin:0;padding:0;box-sizing:border-box;cursor:crosshair}
+body{
+    background:var(--obsidian-base);
+    color:var(--accent);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    overflow-y:auto;
+    user-select:none
+}
+body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background:radial-gradient(circle,transparent 0%,rgba(0,0,0,0.8) 100%);
+    opacity:.05;
+    pointer-events:none;
+    z-index:100
+}
+header{
+    padding:40px;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    z-index:10
+}
+.title-block h1{
+    font-weight:900;
+    font-size:3rem;
+    line-height:.9;
+    letter-spacing:-.05em;
+    text-transform:uppercase
+}
+.status-block{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;
+    text-align:right;
+    color:var(--hostile-dim);
+    letter-spacing:.2em
+}
+main{
+    flex:1;
+    display:grid;
+    grid-template-columns:1fr 600px 1fr;
+    align-items:start;
+    padding:0 40px;
+    gap:40px
+}
+.matrix-container{
+    background:linear-gradient(145deg,var(--obsidian-surface),var(--obsidian-base));
+    border:1px solid var(--obsidian-edge);
+    padding:2px;
+    box-shadow:0 50px 100px rgba(0,0,0,.5)
+}
+.matrix-grid{
+    display:grid;
+    grid-template-columns:repeat(16,1fr);
+    background:var(--obsidian-base)
+}
+.cell{
+    aspect-ratio:1/1;
+    border:.5px solid rgba(255,255,255,.03);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:'JetBrains Mono';
+    font-size:11px;
+    color:var(--hostile-dim);
+    transition:.1s
+}
+.cell:hover{
+	background:white;
+	color:var(--obsidian-base);
+}
+.cell.active{
+    color:var(--accent);
+    text-shadow:0 0 8px rgba(255, 255, 255, 0.171)
+}
+.telemetry{
+    font-family:'JetBrains Mono';
+    font-size:10px;
+    color:var(--hostile-dim);
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    max-height:400px;
+    overflow:hidden
+}
+.log-entry{
+    border-left:1px solid var(--hostile-dim);
+    padding-left:10px;
+    animation:slide .3s ease-out
+}
+@keyframes slide{from{opacity:0;transform:translateX(-10px)}to{opacity:1}}
+
+footer{
+    padding:40px;
+    font-family:'JetBrains Mono';
+    font-size:10px;
+    display:flex;
+    justify-content:space-between;
+    color:var(--hostile-dim)
+}
+.prize-pool{color:var(--accent);font-weight:700}
+#glitch-overlay{
+    position:fixed;
+    inset:0;
+    background:white;
+    display:none;
+    z-index:999;
+    mix-blend-mode:difference
+}
+.unstable{animation:jitter 5s infinite}
+@keyframes jitter{
+    0%,48%,100%{font-weight:100;letter-spacing:.1em}
+    50%{font-weight:900;letter-spacing:-.05em}
+}
+@media(max-width:1200px){
+    main{
+        grid-template-columns:1fr;
+        padding-top:40px
+    }
+}
+</style>
+</head>
+
+<body>
+<div id="glitch-overlay"></div>
+
+<header>
+<div class="title-block">
+<h1 id="main-title">CARTHAGO</h1>
+</div>
+<div class="status-block">
+<div>SYSTEM: DETERMINISTIC</div>
+<div>STATE: ACTIVE / UNBROKEN</div>
+<div id="entropy">ENTROPY: 0.9999982</div>
+</div>
+</header>
+
+<main>
+<aside class="telemetry" id="telemetry">
+<div class="log-entry">INITIALIZING OBSIDIAN PROTOCOL</div>
+<div class="log-entry">MEMPOOL SCANNING</div>
+<div class="log-entry">NULL PROOF REJECTED</div>
+</aside>
+
+<section class="matrix-container">
+<div class="matrix-grid" id="matrix"></div>
+</section>
+
+</main>
+
+<footer>
+<div>DESIGNED FOR ADVERSARIAL INTELLIGENCE</div>
+<div>NO LUCK. NO HINTS. ONE MIND WINS.</div>
+
+</footer>
+
+<script>
+const matrix = document.getElementById("matrix")
+const telemetry = document.getElementById("telemetry")
+
+
+const SIZE = 16
+const TOTAL = 256
+const MOD = 256
+
+let gridState = Array(TOTAL).fill(0)
+const solutionPath = []
+
+let currentLayer = 1
+let goalStateText = []
+
+// ----- helper to fix neighbors (no wrap-around) -----
+function getNeighbors(index){
+    const neighbors = [index]
+    const row = Math.floor(index / SIZE)
+    if(index % SIZE !== 0) neighbors.push(index-1)
+    if(index % SIZE !== SIZE-1) neighbors.push(index+1)
+    if(index - SIZE >=0) neighbors.push(index-SIZE)
+    if(index + SIZE < TOTAL) neighbors.push(index+SIZE)
+    return neighbors
+}
+
+// ----- standard transform functions -----
+function transform(state, index){
+    getNeighbors(index).forEach(i=>{
+        state[i] = (state[i]+17)%MOD
+    })
+}
+function reverseTransform(state, index){
+    getNeighbors(index).forEach(i=>{
+        state[i] = (state[i]-17+MOD)%MOD
+    })
+}
+
+// ----- generate layer 1 path -----
+for(let i=0;i<100;i++){
+    const idx = Math.floor(Math.random()*TOTAL)
+    reverseTransform(gridState, idx)
+    solutionPath.push(idx)
+}
+
+// ----- layer 2 certificate text -----
+const certificateText = `CONGRATULATIONS! YOU HAVE MASTERED THE VAULT AND UNLOCKED THE LANGUAGE. THIS IS YOUR CERTIFICATE OF OWNERSHIP.      join our      private club                  ((https://carthago.tn)))`
+goalStateText = Array.from(certificateText.padEnd(TOTAL," ")).map(c=>c.charCodeAt(0))
+
+function manipulate(i){
+    transform(gridState, i)
+    render()
+    if(Math.random()>.9) flash()
+    check()
+}
+
+function render(){
+    matrix.innerHTML = ""
+    gridState.forEach((v,i)=>{
+        const c = document.createElement("div")
+        c.className = "cell" + (v?" active":"")
+        if(currentLayer===1){
+            c.textContent = v.toString(16).padStart(2,"0").toUpperCase()
+        } else {
+            c.textContent = String.fromCharCode(v)
+        }
+        c.onmousedown = ()=>manipulate(i)
+        matrix.appendChild(c)
+    })
+}
+
+function check(){
+    if(gridState.every(v=>v===0)){
+        if(currentLayer===1){
+            alert("ACCESS GRANTED: Layer 1 complete")
+            currentLayer=2
+            // generate layer 2 starting matrix
+            gridState = goalStateText.slice()
+            const path2 = []
+            for(let i=0;i<100;i++){
+                const idx = Math.floor(Math.random()*TOTAL)
+                reverseTransform(gridState, idx)
+                path2.push(idx)
+            }
+            render()
+        } else {
+            alert("ACCESS GRANTED: Layer 2 complete")
+        }
+    }
+}
+
+
+
+setInterval(()=>{
+    const e=["NODE SYNC","ENTROPY DRIFT","HASH TEST FAILED","PEER TIMEOUT"]
+    const l = document.createElement("div")
+    l.className = "log-entry"
+    l.textContent = e[Math.floor(Math.random()*e.length)]
+    telemetry.prepend(l)
+    if(telemetry.children.length>20) telemetry.lastChild.remove()
+},4000)
+
+setInterval(()=>{
+    document.getElementById("main-title").classList.toggle("unstable")
+},10000)
+
+render()
+</script>
+
+</body>
+</html>
